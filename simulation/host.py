@@ -36,6 +36,7 @@ class Host:
         )
         self.vms.append(vm)
         self.uuid_to_vm[uuid] = vm
+        vm.placemented = True
         self.update_after_change()
         return vm
 

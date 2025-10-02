@@ -1,5 +1,3 @@
-import matplotlib.pyplot as plt
-import os
 from simulation.libs import Logger
 
 WARNING_TEXT = '\x1b[33m'

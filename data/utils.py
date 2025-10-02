@@ -1,6 +1,6 @@
 import pandas as pd
 import os
-from sim_thuong.simulation.libs import Logger
+from simulation.libs import Logger
 
 def load_data(csv_path:str):
     """
