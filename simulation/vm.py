@@ -13,12 +13,18 @@ class VM:
         self.hostname = hostname
         self.placemented = False # VM đã được đặt lên host chưa
         self.uuid = uuid
+        
         # --- VM metrics ---
         self.vm_cpu_steal = float(vm_cpu_steal)
         self.cpu_usage = float(cpu_usage)
         self.cpu_allocated = float(cpu_allocated)
         self.net_in = float(net_in)
         self.net_out = float(net_out)
+        
+        # default = False (no migration yet)
+        self.migrated = False
+        self.pre_hostname = None
+        self.migrated_time = None
         # --- Power state(default on) ---
         self.powered_on = True
         

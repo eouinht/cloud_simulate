@@ -1,12 +1,12 @@
 import simpy
-from utils import load_data
-from env import simulation_process
-from libs import Logger
+from sim_thuong.data.utils import load_data
+from sim_thuong.simulation.env import simulation_process
+from sim_thuong.simulation.libs import Logger
 
 
 def main():
-    # csv_path = "/home/thuong/data/merged_output/test_simulate.csv"  # thay bằng file thực tế
-    csv_path = "/home/thuong/data/merged_output/grouped_metrics_2024-09-01.csv"
+    csv_path = "/home/thuong/data/merged_output/test_simulate.csv"  # thay bằng file thực tế
+    # csv_path = "/home/thuong/data/merged_output/grouped_metrics_2024-09-01.csv"
     df = load_data(csv_path)
     Logger.info("START SIMULATION")
     env = simpy.Environment()
