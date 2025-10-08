@@ -14,16 +14,17 @@ def run_simulation():
     # chạy process của bạn
     env.process(simulation_process(env, df))
     env.run(until=5)
+    
     print("=== Hosts after simulation ===")
     print(state.hosts.keys())
     
-    # print("\n=== FINAL STATE ===")
-    # for hn, h in state.hosts.items():
-    #     print(f"Host {hn} | CPU={h.host_cpu_usage} | VMs={list(h.uuid_to_vm.keys())}")
+    print("\n=== FINAL STATE ===")
+    for hn, h in state.hosts.items():
+        print(f"Host {hn} | CPU={h.host_cpu_usage} | VMs={list(h.uuid_to_vm.keys())}")
     Logger.info("[SIMULATION] END SIMULATION")
 
 def run_api():
-    uvicorn.run("api_server:app", host="0.0.0.0", port=8000)
+    uvicorn.run("api_server:app", host="0.0.0.0", port=8000 )
 
 def main():
     

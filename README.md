@@ -28,15 +28,13 @@ Mục tiêu của dự án: mô phỏng tài nguyên cloud (CPU của host, usag
 2. Chạy mô phỏng 
     ```bash
     python3 main.py
+
+**Data**    
+CSV input chứa thông tin host/VM theo timestamp, hostname, host_cpu_usage, 
+
 **REST API:**
 
 - GET /hosts: trả về danh sách host.
 - GET /hosts/{hostname}: trả về thông tin chi tiết host gồm cpu_usage và danh sách VM, mỗi VM có uuid, cpu_usage, cpu_allocated, network_in, network_out.
-- Dữ liệu mô phỏng: CSV input chứa thông tin host/VM theo timestamp, 
-    + các cột chính: timestamp,  hostname, host_cpu_usage, 
-                                                                                    uuid_set, 
-                                                                                    vm_cpu_usage, 
-                                                                                    vm_cpu_allocated, 
-                                                                                    vm_cpu_steal,
-                                                                                    vm_network_in, 
-                                                                                    vm_network_out.
+
+                                                                                    

@@ -1,25 +1,29 @@
 import pandas as pd
+import uuid as uuid_lib
+from .libs import Logger
 class VM:
     def __init__(self, 
-                 env, 
-                 hostname, 
-                 uuid, 
-                 vm_cpu_steal, 
-                 cpu_usage, 
-                 cpu_allocated, 
-                 net_in, 
-                 net_out):
+                 env = None, 
+                 uuid = None, 
+                 vm_cpu_steal = 0.0, 
+                 cpu_usage = 0.0, 
+                 cpu_allocated = 0.0, 
+                 net_in = 0.0, 
+                 net_out = 0.0,
+                 hostname = None):
+        
         self.env = env
+        self.uuid = uuid or str(uuid_lib.uuid4())
         self.hostname = hostname
         self.placemented = False # VM đã được đặt lên host chưa
-        self.uuid = uuid
+        
         
         # --- VM metrics ---
-        self.vm_cpu_steal = float(vm_cpu_steal)
-        self.cpu_usage = float(cpu_usage)
-        self.cpu_allocated = float(cpu_allocated)
-        self.net_in = float(net_in)
-        self.net_out = float(net_out)
+        self.vm_cpu_steal = vm_cpu_steal
+        self.cpu_usage = cpu_usage
+        self.cpu_allocated = cpu_allocated
+        self.net_in = net_in
+        self.net_out = net_out
         
         # default = False (no migration yet)
         self.migrated = False
@@ -28,49 +32,29 @@ class VM:
         # --- Power state(default on) ---
         self.powered_on = True
         
-        # --- History for analysis ---
-        self.history = {
-            "time": [],
-            "cpu_steal": [],
-            "cpu_usage:": [],
-            "cpu_allocated": [],
-            "net_in": [],
-            "net_out": [],
-        }
-    def update(self, cpu_usage=None, cpu_steal=None, 
-               cpu_allocated=None, net_in=None, net_out=None):
-        """Update VM metrics (only provided values are updated)."""
-        if cpu_usage is not None: self.cpu_usage = cpu_usage
-        if cpu_steal is not None: self.cpu_steal = cpu_steal
-        if cpu_allocated is not None: self.cpu_allocated = cpu_allocated
-        if net_in is not None: self.net_in = net_in
-        if net_out is not None: self.net_out = net_out
-        return self
-    # def update_metrics(self, timestamp, cpu_steal, cpu_usage, cpu_allocated, net_in, net_out):
-    #     # --- Update metric follow time ---
-    #     self.cpu_steal = float(cpu_steal)
-    #     self.cpu_usage = float(cpu_usage)
-    #     self.cpu_allocated = float(cpu_allocated)
-    #     self.net_in = float(net_in)
-    #     self.net_out = float(net_out)
-         
-    #     # --- Saving in history --- 
-    #     self.history["time"].append(timestamp)
-    #     self.history["cpu_steal"].append(cpu_steal)
-    #     self.history["cpu_usage:"].append(cpu_usage)
-    #     self.history["cpu_allocated"].append(cpu_allocated)
-    #     self.history["net_in"].append(net_in)
-    #     self.history["net_out"].append(net_out)
+    # def assign_host(self, host):     
+    #     # Gan VM vao host
+    #     self.host = host.hostname
+    #     self.placemented = True
         
-    # def __repr__(self):
-    #     return (f"VM(uuid={self.uuid}, host={self.hostname}, "
-    #             f"usage={self.cpu_usage}, alloc={self.cpu_allocated}, "
-    #             f"net_in={self.net_in}, net_out={self.net_out})")    
-    # # -- Checking power state
-    def is_powered_on(self):
-        return self.powered_on
-    # # --- Power controls ---
-    # def power_on(self):
-    #     self.powered_on = True
-    # def power_off(self):
-    #     self.powered_on = False
+    # def update(self, cpu_usage=None, cpu_steal=None, 
+    #            cpu_allocated=None, net_in=None, net_out=None):
+    #     """Update VM metrics (only provided values are updated)."""
+    #     if cpu_usage is not None: self.cpu_usage = cpu_usage
+    #     if cpu_steal is not None: self.cpu_steal = cpu_steal
+    #     if cpu_allocated is not None: self.cpu_allocated = cpu_allocated
+    #     if net_in is not None: self.net_in = net_in
+    #     if net_out is not None: self.net_out = net_out
+    #     return self
+      
+    def compute_steal_time(self):
+        # fix logic latter
+        if self.cpu_allocated <= 0:
+            steal_time = 0.0
+        else:
+            steal_time = max(0.0, (self.cpu_allocated - self.cpu_usage) / self.cpu_allocated * 100.0)
+            
+        steal_time = round(steal_time, 7)
+        self.vm_cpu_steal = steal_time
+        Logger.info("Here")
+        return steal_time

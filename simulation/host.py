@@ -40,6 +40,28 @@ class Host:
         self.update_after_change()
         return vm
 
+    def create_vm(self, 
+                  uuid = None,
+                  cpu_allocated=1.0,
+                  cpu_usage=0.0,
+                  vm_cpu_steal=0.0,
+                  net_in=0.0,
+                  net_out=0.0):
+        vm = VM(
+            env=self.env,
+            uuid = uuid,
+            cpu_allocated=cpu_allocated,
+            cpu_usage=cpu_usage,
+            vm_cpu_steal=vm_cpu_steal,
+            net_in=net_in,
+            net_out=net_out
+        )
+        self.vms.append(vm)
+        self.uuid_to_vm[vm.uuid] = vm
+        vm.placemented = True
+        self.update_after_change()
+        return vm
+        
     def remove_vm(self, uuid):
         """
         Remove a VM from this host (both vms list and uuid_to_vm dict).
@@ -67,8 +89,6 @@ class Host:
 
         self.update_after_change()
         return vm
-
-    # ---------------- Host Stats ---------------- #
 
     def update_after_change(self, debug=False):
         """_Cập nhật CPU usage ngay sau khi có thay đổi về VM (add, remove, migrate).y_
