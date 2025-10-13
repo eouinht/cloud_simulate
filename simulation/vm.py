@@ -37,15 +37,15 @@ class VM:
     #     self.host = host.hostname
     #     self.placemented = True
         
-    # def update(self, cpu_usage=None, cpu_steal=None, 
-    #            cpu_allocated=None, net_in=None, net_out=None):
-    #     """Update VM metrics (only provided values are updated)."""
-    #     if cpu_usage is not None: self.cpu_usage = cpu_usage
-    #     if cpu_steal is not None: self.cpu_steal = cpu_steal
-    #     if cpu_allocated is not None: self.cpu_allocated = cpu_allocated
-    #     if net_in is not None: self.net_in = net_in
-    #     if net_out is not None: self.net_out = net_out
-    #     return self
+    def update(self, cpu_usage=None, cpu_steal=None, 
+               cpu_allocated=None, net_in=None, net_out=None):
+        """Update VM metrics (only provided values are updated)."""
+        if cpu_usage is not None: self.cpu_usage = cpu_usage
+        if cpu_steal is not None: self.cpu_steal = cpu_steal
+        if cpu_allocated is not None: self.cpu_allocated = cpu_allocated
+        if net_in is not None: self.net_in = net_in
+        if net_out is not None: self.net_out = net_out
+        return self
       
     def compute_steal_time(self):
         # fix logic latter

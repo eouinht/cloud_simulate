@@ -8,9 +8,7 @@ def load_data(csv_path:str):
     """
         Ham doc du lieu tu file CSV va tra ve pandas Dataframe
     """
-    # df = pd.read_csv(csv_path)
-    # df["timestamp"] = pd.to_datetime(df["timestamp"])
-    # return df
+
     if not os.path.exists(csv_path):
         Logger.error(f"Khong tim that file: {csv_path}")
         return None

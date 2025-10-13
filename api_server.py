@@ -4,16 +4,22 @@ from simulation.libs import Logger
 # from simulation.env import 
 from simulation import state
 from simulation.vm import VM
-
 app = FastAPI(
     title="Cloud Simulation API",
     description="Control simulation via API",
     version="1.0.0"
 )
+
+
+
 @app.get("/")
 def root():
     return {"message": "Welcome to the Cloud Simulation API! Visit /docs for interactive API docs."}
 
+# @app.post("/step")
+# def step_simulation():
+#     result = state.simulate_one_step()
+#     return result
 # List all hosts
 @app.get("/hosts")
 def list_hosts():

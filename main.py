@@ -9,18 +9,19 @@ import uvicorn
 def run_simulation():
     csv_path = "/home/thuong/data/merged_output/test_simulate.csv"
     df = load_data(csv_path)
+    
     Logger.info("[SIMULATION] START SIMULATION")
     env = simpy.Environment()
     # chạy process của bạn
     env.process(simulation_process(env, df))
-    env.run(until=5)
+    env.run()
     
-    print("=== Hosts after simulation ===")
-    print(state.hosts.keys())
+    # print("=== Hosts after simulation ===")
+    # print(state.hosts.keys())
     
-    print("\n=== FINAL STATE ===")
-    for hn, h in state.hosts.items():
-        print(f"Host {hn} | CPU={h.host_cpu_usage} | VMs={list(h.uuid_to_vm.keys())}")
+    # print("\n=== FINAL STATE ===")
+    # for hn, h in state.hosts.items():
+    #     print(f"Host {hn} | CPU={h.host_cpu_usage} | VMs={list(h.uuid_to_vm.keys())}")
     Logger.info("[SIMULATION] END SIMULATION")
 
 def run_api():

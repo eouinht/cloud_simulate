@@ -3,7 +3,7 @@ from data.utils import safe_float, safe_list_parse
 from simulation.observe import inspect_host
 from simulation.libs import Logger
 from simulation import state 
-
+import time 
 
 def simulation_process(env, df):
     """
@@ -78,8 +78,9 @@ def simulation_process(env, df):
             host.update_after_change()
            
         Logger.info(f"Time {t}")
-        state.timestamp = t
+        state.timestamp["current"] = t
         inspect_host(state.hosts)
+        # time.sleep(1)
         yield env.timeout(1)  # mỗi timestamp = 1 step
         
        
