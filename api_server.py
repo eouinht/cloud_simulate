@@ -4,6 +4,7 @@ from simulation.libs import Logger
 # from simulation.env import 
 from simulation import state
 from simulation.vm import VM
+
 app = FastAPI(
     title="Cloud Simulation API",
     description="Control simulation via API",
@@ -30,14 +31,22 @@ def list_hosts():
     for hn, h in state.hosts.items():
         response["hosts"].append({
             "hostname": hn,
-            "cpu_usage": h.host_cpu_usage,
+            "cpu_usage": h.cpu_usage,
             "num_vms": len(h.uuid_to_vm)
         })
     return response
 #List VMs on a specific host
 @app.get("/hosts/{hostname}")
 def get_host(hostname: str):
-    if hostname not in state.hosts:
+    hostname_list = list(state.hosts.keys())
+    print(f"Hostname_list: {hostname_list} ")
+    try:
+        hostname = int(hostname)
+    except ValueError:
+        # Nếu không ép được thì giữ nguyên (tránh crash)
+        pass
+
+    if hostname not in hostname_list:
         return {"error": f"Host {hostname} not found"}
     host = state.hosts[hostname]
     vm_list = []
@@ -45,7 +54,7 @@ def get_host(hostname: str):
         vm_list.append({
                 "uuid": vm_uuid,
                 "cpu_usage": vm.cpu_usage,
-                "vm_cpu_stel": vm.vm_cpu_steal,
+                "vm_cpu_steal": vm.vm_cpu_steal,
                 "cpu_allocated": vm.cpu_allocated,
                 "network_in": vm.net_in,
                 "network_out": vm.net_out,
@@ -54,9 +63,9 @@ def get_host(hostname: str):
         })
     return {
         "hostname" : hostname,
-        "cpu_usage": host.host_cpu_usage,
-        "vms": vm_list,
-        "num_vms": len(host.uuid_to_vm),       
+        "cpu_usage": host.cpu_usage,
+        "num_vms": len(host.uuid_to_vm),     
+        "vms": vm_list,  
     }
     
 class CreateVMRequest(BaseModel):
@@ -101,17 +110,20 @@ def creat_vm(req: CreateVMRequest):
     
 @app.post("/hosts/{hostname}/assign-vm")
 def assign_vm(hostname: str, req: AssignVMRequest):
+    
+    hostname = int(hostname)
+    
     if hostname not in state.hosts:
         return {"error": f"Host {hostname} is not exist"}
     if req.uuid not in state.vms:
-        return {"error": f"Vm {req.vm_uuid} is not exist"}
+        return {"error": f"Vm {req.uuid} is not exist"}
     host = state.hosts[hostname]
-    vm = state.vms[req.vm_uuid]
+    vm = state.vms[req.uuid]
     # Tag vm to host
     host.uuid_to_vm[vm.uuid] = vm
     vm.assign_host(host)
     return {
-        "status": f"successfully embeded {vm.uuid} to {hostname}",
+        "status": f"successfully embeded {vm.uuid} to host {hostname}",
         "host": hostname,
         "vm": vm.uuid
     }

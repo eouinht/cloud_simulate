@@ -6,8 +6,20 @@ from simulation.libs import Logger
 from simulation import state
 import uvicorn
 
+import socket
+
+def check_port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+if check_port_in_use(8000):
+    print("Port 8000 đã được dùng. Hãy dừng process cũ trước.")
+    exit(1)
+
 def run_simulation():
-    csv_path = "/home/thuong/data/merged_output/test_simulate.csv"
+    # csv_path = "/home/thuong/data/merged_output/test_simulate.csv"
+    csv_path = "/home/thuong/data/sim_thuong/data/CSV-FileNew/test.csv"
+    
     df = load_data(csv_path)
     
     Logger.info("[SIMULATION] START SIMULATION")

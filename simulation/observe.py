@@ -73,7 +73,7 @@ def _handle_inspect_host(hosts):
     hostnames = list(hosts.keys())
     for idx, hn in enumerate(hostnames):
         h = hosts[hn]
-        print(f"[{idx}] Host={h.hostname} CPU={h.host_cpu_usage:.2f}")
+        print(f"[{idx}] Host={h.hostname} CPU={h.cpu_usage:.2f}")
 
     host_idx = input("Select host index (or press Enter to go back): ").strip()
     if not host_idx:

@@ -3,7 +3,7 @@ import os
 from simulation.libs import Logger
 import numpy as np
 import ast
-
+import re
 def load_data(csv_path:str):
     """
         Ham doc du lieu tu file CSV va tra ve pandas Dataframe
@@ -45,3 +45,22 @@ def safe_float(x):
         return val
     except Exception:
         return 0.0
+
+def parse_set_string(s):
+    if not isinstance(s,str):
+        return []
+    
+    s = s.strip().strip("{}")
+    if not s:
+        return []
+    
+    s = re.sub(f"[\[\]]", "", s)
+    parts = [x.strip() for x in s.split(",") if x.strip]
+    
+    result = []
+    for x in parts:
+        try:
+            result.append(float(x))
+        except ValueError:
+            result.append(x)    
+    return result

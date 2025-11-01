@@ -4,13 +4,14 @@ class Host:
     def __init__(self, 
                  env, 
                  hostname, 
-                 host_cpu_usage=0.0):
+                 total_cpu = 1.0,
+                 cpu_usage = 0.0):
         self.env = env
         self.hostname = hostname
-        self.host_cpu_usage = host_cpu_usage
+        self.total_cpu = total_cpu
         self.uuid_to_vm = {} # Dict for fast VM lookup
         self.vms = []        # List for iteration
-    
+        self.cpu_usage = cpu_usage
     # --- VM management ---    
     def add_vm(self, 
                uuid, 
@@ -90,7 +91,7 @@ class Host:
         self.update_after_change()
         return vm
 
-    def update_after_change(self, debug=False):
+    def k_update_after_change(self, debug=False):
         """_Cập nhật CPU usage ngay sau khi có thay đổi về VM (add, remove, migrate).y_
 
         Args:
@@ -106,3 +107,16 @@ class Host:
         return total
     
     
+    def update_after_change(self, debug = False):
+        total_cpu_usage = 0.0
+        for vm in self.uuid_to_vm.values():
+            vm_cpu = vm.cpu_allocated * (vm.cpu_usage/100)
+            total_cpu_usage += vm_cpu
+        if self.total_cpu > 0:
+            self.cpu_usage = (total_cpu_usage / self.total_cpu)*100
+        else:
+            self.cpu_usage = 0.0
+        
+        self.cpu_usage = round(self.cpu_usage, 3)
+        Logger.info(f"[{self.hostname}] CPU usage updated to {self.cpu_usage:.4f}")
+        return self.cpu_usage    

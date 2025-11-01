@@ -63,7 +63,7 @@ class Logger:
         """  
         data = []  
         for i, h in enumerate(hosts.values()): #host la dict
-            cpu_val = h.host_cpu_usage
+            cpu_val = h.cpu_usage
             cpu_str = f"{cpu_val:.2f}%"
             if cpu_val >= highlight_threadhold:
                 cpu_str = Fore.RED + cpu_str + Style.RESET_ALL
@@ -90,12 +90,12 @@ class Logger:
             cpu_str = f"{cpu_val:.2f}%"
             if cpu_val >= highlight_threadhold:
                 cpu_str = Fore.RED + cpu_str + Style.RESET_ALL
-            data.append([vm.uuid, cpu_str, f"{vm.cpu_allocated:.2f}%", f"{vm.vm_cpu_steal:.2f}%"])
+            data.append([vm.uuid, cpu_str, f"{vm.cpu_allocated:.2f}", f"{vm.vm_cpu_steal:.2f}%"])
             
             table = tabulate(data,
                              headers=["UUID",
                                       "CPU Usage",
-                                      "CPU Allocated",
+                                      "CPU Allocated (core)",
                                       "CPU Steal"],
                              tablefmt="fancy_grid")
             # Tô màu xanh dương cho toàn bộ viền bảng

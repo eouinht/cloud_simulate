@@ -32,10 +32,10 @@ class VM:
         # --- Power state(default on) ---
         self.powered_on = True
         
-    # def assign_host(self, host):     
-    #     # Gan VM vao host
-    #     self.host = host.hostname
-    #     self.placemented = True
+    def assign_host(self, host):     
+        # Gan VM vao host
+        self.host = host.hostname
+        self.placemented = True
         
     def update(self, cpu_usage=None, cpu_steal=None, 
                cpu_allocated=None, net_in=None, net_out=None):
