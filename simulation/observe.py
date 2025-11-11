@@ -39,7 +39,7 @@ def inspect_host(hosts):
 
     while True:
         print("\n=== HOST SUMMARY ===")
-        Logger.show_hosts_summary(hosts)
+        # Logger.show_hosts_summary(hosts)
 
         print("Options:")
         print("  p - Select a host and list its VMs")

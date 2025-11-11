@@ -34,8 +34,16 @@ class VM:
         
     def assign_host(self, host):     
         # Gan VM vao host
-        self.host = host.hostname
+        self.hostname = host.hostname
         self.placemented = True
+        
+    def migrated_vm(self, tar_host):
+        self.pre_hostname = self.hostname
+        self.hostname = tar_host.hostname
+        self.placemented = True
+        self.migrated = True
+        if self.env is not None:
+            self.migrated_time = self.env.now
         
     def update(self, cpu_usage=None, cpu_steal=None, 
                cpu_allocated=None, net_in=None, net_out=None):

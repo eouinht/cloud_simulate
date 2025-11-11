@@ -133,9 +133,11 @@ class MigrateVMRequest(BaseModel):
     des_host: str
 @app.post("/migrate")
 def migrate_vm_api(req: MigrateVMRequest):
+    
     uuid = req.uuid
     target_host = req.des_host
-
+    target_host = int(target_host)
+    
     # Validate VM existence
     if uuid not in state.vms:
         raise HTTPException(status_code=404, detail=f"VM {uuid} not found in system.")
@@ -144,8 +146,14 @@ def migrate_vm_api(req: MigrateVMRequest):
     if target_host not in state.hosts:
         raise HTTPException(status_code=404, detail=f"Host {target_host} not found in system.")
 
+    vm = state.vms[uuid]
+    
     # Get current host
-    cur_hostname = state.vms[uuid]["host"]
+    cur_hostname = vm.hostname
+    
+    if cur_hostname is None:
+        raise HTTPException(status_code=500, detail=f"VM {uuid} is not assign to any host.")
+
     if cur_hostname == target_host:
         raise HTTPException(status_code=400, detail="VM is already on the target host.")
 
@@ -161,9 +169,8 @@ def migrate_vm_api(req: MigrateVMRequest):
 
     # Assign VM to new host
     tar_host.vms.append(vm)
-    tar_host.uuid_to_vm[uuid] = vm
-    state.vms[uuid]["host"] = target_host
-    vm.hostname = target_host  # update VM info
+    tar_host.uuid_to_vm[vm.uuid] = vm
+    vm.migrated_vm(tar_host)
 
     # Update both hosts
     cur_host.update_after_change()
@@ -187,36 +194,38 @@ def migrate_vm_api(req: MigrateVMRequest):
             "network_out": vm.net_out
         }
     }
-
 @app.get("/vm/{uuid}/steal_time")
 def get_vm_steal_time(uuid: str):
     """
-    Calculate and return the steal time (in percent) of a VM.
+    Return the current steal time (%) of a VM.
     """
-    # Check if VM exists
-    if uuid not in state.vms:
+
+    # --- Kiểm tra VM tồn tại ---
+    vm = state.vms[uuid]
+    if vm is None:
         raise HTTPException(status_code=404, detail=f"VM {uuid} not found in system.")
-    
-    # Find which host it belongs to
-    host_name = state.vms[uuid].get("host")
-    if host_name not in state.hosts:
-        raise HTTPException(status_code=404, detail=f"Host {host_name} not found for VM {uuid}.")
-    
-    host = state.hosts[host_name]
 
-    # Access the VM object
-    if uuid not in host.uuid_to_vm:
-        raise HTTPException(status_code=404, detail=f"VM {uuid} missing from host {host_name}.")
-    
-    vm = host.uuid_to_vm[uuid]
+    # --- Lấy hostname hiện tại ---
+    hostname = vm.get("host")
+    if hostname is None or hostname not in state.hosts:
+        raise HTTPException(status_code=404, detail=f"Host not found for VM {uuid}.")
 
-    # Compute steal time (for now, use simple example)
-    steal_time = vm.compute_steal_time()  # must exist in your VM class
+    host = state.hosts[hostname]
 
+    # --- Kiểm tra VM có thực sự thuộc host này không ---
+    host_vm = host.uuid_to_vm.get(uuid)
+    if host_vm is None:
+        raise HTTPException(status_code=404, detail=f"VM {uuid} not found in host {hostname} state.")
+
+    # --- Tính toán steal time ---
+    if not hasattr(host_vm, "compute_steal_time"):
+        raise HTTPException(status_code=500, detail="VM class missing compute_steal_time() method.")
+
+    steal_time = host_vm.compute_steal_time()
+    # --- Trả kết quả ---
     return {
         "timestamp": state.timestamp,
         "uuid": uuid,
-        "host": host_name,
+        "host": hostname,
         "steal_time": steal_time,
-        
     }
