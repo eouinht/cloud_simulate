@@ -1,4 +1,4 @@
 data/CSV-FileNew
 data/HUAWEICloudPublicDataset
-/home/thuong/data/sim_thuong/data/test_simulate.csv
-/home/thuong/data/sim_thuong/data/__pycache__
+data/test_simulate.csv
+data/__pycache__
