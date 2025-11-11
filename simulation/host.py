@@ -5,19 +5,26 @@ class Host:
                  env, 
                  hostname, 
                  total_cpu = 1.0,
-                 cpu_usage = 0.0):
+                 cpu_usage = 0.0,
+                 total_memory = 0.0,
+                 mem_in_used = 0.0):
         self.env = env
         self.hostname = hostname
         self.total_cpu = total_cpu
         self.uuid_to_vm = {} # Dict for fast VM lookup
         self.vms = []        # List for iteration
         self.cpu_usage = cpu_usage
+        self.total_memory = total_memory
+        mem_in_used = mem_in_used
+
+        
     # --- VM management ---    
     def add_vm(self, 
                uuid, 
                cpu_usage, 
                cpu_steal, 
                cpu_allocated, 
+               memory,
                net_in, 
                net_out):
         
@@ -32,6 +39,7 @@ class Host:
             vm_cpu_steal=cpu_steal,
             cpu_usage=cpu_usage,
             cpu_allocated=cpu_allocated,
+            memory = memory,
             net_in=net_in,
             net_out=net_out
         )
@@ -43,7 +51,8 @@ class Host:
 
     def create_vm(self, 
                   uuid = None,
-                  cpu_allocated=1.0,
+                  cpu_allocated=2.0,
+                  memory=2.0,
                   cpu_usage=0.0,
                   vm_cpu_steal=0.0,
                   net_in=0.0,
@@ -91,32 +100,33 @@ class Host:
         self.update_after_change()
         return vm
 
-    def k_update_after_change(self, debug=False):
-        """_Cập nhật CPU usage ngay sau khi có thay đổi về VM (add, remove, migrate).y_
+    # def k_update_after_change(self, debug=False):
+    #     """_Cập nhật CPU usage ngay sau khi có thay đổi về VM (add, remove, migrate).y_
 
-        Args:
-            debug (bool, optional): _description_. Defaults to False.
-        """
-        total = 0.0
-        for vm in self.vms:
-            if vm.powered_on:
-                total += vm.cpu_usage
-        self.host_cpu_usage = total
-        if debug:
-            Logger.info(f"[{self.hostname}] CPU updated after change = {self.host_cpu_usage:.2f}")
-        return total
+    #     Args:
+    #         debug (bool, optional): _description_. Defaults to False.
+    #     """
+    #     total = 0.0
+    #     for vm in self.vms:
+    #         if vm.powered_on:
+    #             total += vm.cpu_usage
+    #     self.host_cpu_usage = total
+    #     if debug:
+    #         Logger.info(f"[{self.hostname}] CPU updated after change = {self.host_cpu_usage:.2f}")
+    #     return total
     
     
     def update_after_change(self, debug = False):
-        total_cpu_usage = 0.0
-        for vm in self.uuid_to_vm.values():
-            vm_cpu = vm.cpu_allocated * (vm.cpu_usage/100)
-            total_cpu_usage += vm_cpu
-        if self.total_cpu > 0:
-            self.cpu_usage = (total_cpu_usage / self.total_cpu)*100
-        else:
-            self.cpu_usage = 0.0
-        
-        self.cpu_usage = round(self.cpu_usage, 3)
-        Logger.info(f"[{self.hostname}] CPU usage updated to {self.cpu_usage:.4f}")
-        return self.cpu_usage    
+        """
+        Cập nhật tổng memory đang dùng của host.
+        - self.mem_in_used: tổng memory VM đang dùng (GB)
+        """
+        # Tính tổng memory tất cả VM trên host
+        self.mem_in_used= sum(getattr(vm, "memory", 0.0) for vm in self.uuid_to_vm.values())
+
+        if debug:
+            print(f"[{self.hostname}] Memory used: {self.memory_used:.3f} GB")
+
+        Logger.info(f"[{self.hostname}] Memory used: {self.mem_in_used:.3f} GB")
+
+        return self.mem_in_used

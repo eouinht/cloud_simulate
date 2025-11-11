@@ -31,7 +31,9 @@ def list_hosts():
     for hn, h in state.hosts.items():
         response["hosts"].append({
             "hostname": hn,
-            "cpu_usage": h.cpu_usage,
+            # "cpu_usage": h.cpu_usage,
+            "total_memory": h.total_memory,
+            "mem_in_used": h.mem_in_used,
             "num_vms": len(h.uuid_to_vm)
         })
     return response
@@ -56,6 +58,7 @@ def get_host(hostname: str):
                 "cpu_usage": vm.cpu_usage,
                 "vm_cpu_steal": vm.vm_cpu_steal,
                 "cpu_allocated": vm.cpu_allocated,
+                "memory":vm.memory,
                 "network_in": vm.net_in,
                 "network_out": vm.net_out,
                 "migrated" : vm.migrated,

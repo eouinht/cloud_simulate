@@ -100,15 +100,39 @@ def simulation_process(env, df):
             
 
             # Nếu host chưa tồn tại thì khởi tạo
+            # if hostname not in state.hosts:
+            #     Logger.info(f"Bắt đầu khởi tạo host: {hostname}")
+            #     total_cpu = float(row.get("total_cpu", 1))
+            #     cpu_usage = 0.0  # không có trong dataset mới
+            #     total_memory = float(row.get("total_memory", 1))
+            #     print(f"Total mem of hostname {hostname} is {total_memory}")
+            #     state.hosts[hostname] = Host(env, 
+            #                                  hostname,
+            #                                  total_cpu, 
+            #                                  total_memory,
+            #                                  cpu_usage)
+            # 
+            # host = state.hosts[hostname]
             if hostname not in state.hosts:
-                total_cpu = float(row.get("total_cpu", 1))
                 Logger.info(f"Bắt đầu khởi tạo host: {hostname}")
-                cpu_usage = 0.0  # không có trong dataset mới
-                state.hosts[hostname] = Host(env, 
-                                             hostname,
-                                             total_cpu, 
-                                             cpu_usage)
-            host = state.hosts[hostname]
+                
+                total_cpu = float(row.get("total_cpu", 1))
+                total_memory = float(row.get("total_memory", 1))
+                cpu_usage = float(row.get("cpu_usage", 0))  # nếu dataset không có, mặc định 0
+                # threshold = float(row.get("threshold", 0.7))  # nếu muốn lưu threshold
+                
+                host = Host(env,
+                            hostname,
+                            total_cpu=total_cpu,
+                            cpu_usage=cpu_usage,
+                            total_memory=total_memory)
+                
+                # host.threshold = threshold  # thêm trường threshold nếu Host chưa có
+                state.hosts[hostname] = host
+
+            else:
+                host = state.hosts[hostname]
+
 
             # --- Parse dữ liệu VM ---
             
@@ -126,22 +150,25 @@ def simulation_process(env, df):
                 uuid = uuid_set[i]
                 cpu_usage = safe_float(vm_cpu_usage[i])
                 cpu_allocated =  safe_float(vm_vcpus[i])
+                memory = safe_float(vm_memory[i])
                 cpu_steal = 0.0  # không có cột này trong dataset mới
                 net_in = 0.0     # không có
                 net_out = 0.0    # không có
 
                 if uuid not in host.uuid_to_vm:
-                    host.add_vm(uuid, cpu_usage, cpu_steal, cpu_allocated, net_in, net_out)
-                    state.vms[uuid] = {"host": hostname}
+                    vm_obj  = host.add_vm(uuid, cpu_usage, cpu_steal, cpu_allocated, memory, net_in, net_out)
+                    state.vms[uuid] = vm_obj
                 else:
-                    host.uuid_to_vm[uuid].update(
+                    vm_obj = host.uuid_to_vm[uuid]
+                    vm_obj.update(
                         cpu_usage=cpu_usage,
                         cpu_steal=cpu_steal,
                         cpu_allocated=cpu_allocated,
+                        memory = memory,
                         net_in=net_in,
                         net_out=net_out
                     )
-                    state.vms[uuid]["host"] = hostname
+                    state.vms[uuid] = vm_obj 
 
             # --- Cập nhật host CPU usage ---
             host.update_after_change()

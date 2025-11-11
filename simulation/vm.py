@@ -8,6 +8,7 @@ class VM:
                  vm_cpu_steal = 0.0, 
                  cpu_usage = 0.0, 
                  cpu_allocated = 0.0, 
+                 memory = 0.0,
                  net_in = 0.0, 
                  net_out = 0.0,
                  hostname = None):
@@ -24,7 +25,7 @@ class VM:
         self.cpu_allocated = cpu_allocated
         self.net_in = net_in
         self.net_out = net_out
-        
+        self.memory = memory
         # default = False (no migration yet)
         self.migrated = False
         self.pre_hostname = None
@@ -46,11 +47,12 @@ class VM:
             self.migrated_time = self.env.now
         
     def update(self, cpu_usage=None, cpu_steal=None, 
-               cpu_allocated=None, net_in=None, net_out=None):
+               cpu_allocated=None,memory = None, net_in=None, net_out=None):
         """Update VM metrics (only provided values are updated)."""
         if cpu_usage is not None: self.cpu_usage = cpu_usage
         if cpu_steal is not None: self.cpu_steal = cpu_steal
         if cpu_allocated is not None: self.cpu_allocated = cpu_allocated
+        if memory is not None: self.memory = memory
         if net_in is not None: self.net_in = net_in
         if net_out is not None: self.net_out = net_out
         return self
