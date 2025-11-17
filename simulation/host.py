@@ -7,7 +7,8 @@ class Host:
                  total_cpu = 1.0,
                  cpu_usage = 0.0,
                  total_memory = 0.0,
-                 mem_in_used = 0.0):
+                 mem_in_used = 0.0,
+                 ):
         self.env = env
         self.hostname = hostname
         self.total_cpu = total_cpu
@@ -15,8 +16,17 @@ class Host:
         self.vms = []        # List for iteration
         self.cpu_usage = cpu_usage
         self.total_memory = total_memory
-        mem_in_used = mem_in_used
-
+        # self.mem_in_used = mem_in_used
+        self.qos_risk = -1
+        # --- Logger thông tin khi khởi tạo host ---
+        Logger.info(f"[Host Init] Hostname: {self.hostname}")
+        Logger.info(f"[Host Init] Total CPU: {self.total_cpu}")
+        Logger.info(f"[Host Init] CPU usage: {self.cpu_usage}")
+        Logger.info(f"[Host Init] Total Memory: {self.total_memory}")
+        # Logger.info(f"[Host Init] Memory in use: {self.mem_in_used}")
+        Logger.info(f"[Host Init] QoS Risk: {self.qos_risk}")
+        Logger.info(f"[Host Init] VM count: {len(self.vms)}")
+        
         
     # --- VM management ---    
     def add_vm(self, 
@@ -128,5 +138,24 @@ class Host:
             print(f"[{self.hostname}] Memory used: {self.memory_used:.3f} GB")
 
         Logger.info(f"[{self.hostname}] Memory used: {self.mem_in_used:.3f} GB")
-
+        
+        if self.mem_in_used > self.total_memory:
+            Logger.error("Mem in used > real total mem")
+        elif self.mem_in_used  > 0.8*self.total_memory:
+            Logger.warning(" The risk of over mem in used to qos theshold")
+        
         return self.mem_in_used
+   
+
+    def update_qos_risk(self):
+        
+        self.cpu_usage = sum(
+        (getattr(vm, "cpu_usage", 0.0) / 100) * getattr(vm, "cpu_allocated", 1.0)
+        for vm in self.uuid_to_vm.values()
+        )
+        self.cpu_usage = self.cpu_usage*100/self.total_cpu
+        self.qos_risk = max(0.0, (self.cpu_usage - 80)/self.cpu_usage)
+        
+        
+        Logger.info(f"[{self.hostname}] Host cpu usage: {self.cpu_usage}")
+        Logger.info(f"[{self.hostname}] Qos risk: {self.qos_risk}")

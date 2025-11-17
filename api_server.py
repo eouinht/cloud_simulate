@@ -41,7 +41,7 @@ def list_hosts():
 @app.get("/hosts/{hostname}")
 def get_host(hostname: str):
     hostname_list = list(state.hosts.keys())
-    print(f"Hostname_list: {hostname_list} ")
+    # print(f"Hostname_list: {hostname_list} ")
     try:
         hostname = int(hostname)
     except ValueError:

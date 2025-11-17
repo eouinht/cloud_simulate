@@ -18,8 +18,9 @@ def load_data(csv_path:str):
         df = pd.read_csv(csv_path)
         Logger.succeed(f"Doc thanh cong file: {csv_path}")
         return df
+    
     except Exception as e:
-        Logger.critical(f"Loi khi doc file: {e}")
+        Logger.error(f"Loi khi doc file: {e}")
         return None       
 
 def safe_list_parse(value):

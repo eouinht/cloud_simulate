@@ -5,7 +5,6 @@ from simulation.env import simulation_process
 from simulation.libs import Logger
 from simulation import state
 import uvicorn
-
 import socket
 
 def check_port_in_use(port):
@@ -18,7 +17,7 @@ if check_port_in_use(8000):
 
 def run_simulation():
     # csv_path = "/home/thuong/data/merged_output/test_simulate.csv"
-    csv_path = "/home/thuong/data/sim_thuong/data/CSV-FileNew/test.csv"
+    csv_path = "data/CSV-FileNew/vm_offline_schedueling.csv"
     
     df = load_data(csv_path)
     

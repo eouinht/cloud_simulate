@@ -28,34 +28,64 @@ def getFile(folder: str):
     return files
 
 class Logger:
+    LOG_FOLDER = "./logs"
+    LOG_FILE_NAME = "simulation.log"
+    PRINT_TO_SCREEN = False
+    
+    @staticmethod
+    def _ensure_log_folder():
+        if not os.path.exists(Logger.LOG_FOLDER):
+            os.makedirs(Logger.LOG_FOLDER)
+    
+    @staticmethod
+    def _log_file_path():
+        Logger._ensure_log_folder()
+        return os.path.join(Logger.LOG_FOLDER, Logger.LOG_FILE_NAME)
+
     @staticmethod
     def _timestamp():
         return datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
 
     @staticmethod
+    def _write_to_file(text):
+        path = Logger._log_file_path()
+        with open(Logger._log_file_path(), "a") as f:
+            f.write(text + "\n")
+            
+    @staticmethod
     def info(text):
-        print(f'{Logger._timestamp()} {INFO_TEXT}- [INFO] {text}{RESET_TEXT}')
+        log_text = f"{Logger._timestamp()} [INFO] {text}"
+        if Logger.PRINT_TO_SCREEN:
+            print(log_text)
+        Logger._write_to_file(log_text)
 
     @staticmethod
     def warning(text):
-        print(f'{Logger._timestamp()} {WARNING_TEXT}- [WARN] {text}{RESET_TEXT}')
+        log_text = f"{Logger._timestamp()} [WARN] {text}"
+        if Logger.PRINT_TO_SCREEN:
+            print(log_text)
+        Logger._write_to_file(log_text)
 
     @staticmethod
     def error(text):
-        print(f'{Logger._timestamp()} {ERROR_TEXT}- [ERRO] {text}{RESET_TEXT}')
-
-    @staticmethod
-    def critical(text):
-        print(f'{Logger._timestamp()} {CRITICAL_TEXT}- [CRIT] {text}{RESET_TEXT}')
+        log_text = f"{Logger._timestamp()} [ERRO] {text}"
+        if Logger.PRINT_TO_SCREEN:
+            print(log_text)
+        Logger._write_to_file(log_text)
 
     @staticmethod
     def succeed(text):
-        print(f'{Logger._timestamp()} {SUCCEED_TEXT}- [SUCC] {text}{RESET_TEXT}')
+        log_text = f"{Logger._timestamp()} [SUCC] {text}"
+        if Logger.PRINT_TO_SCREEN:
+            print(log_text)
+        Logger._write_to_file(log_text)
 
     @staticmethod
     def normal(text):
-        print(f'{Logger._timestamp()} {text}')
-    
+        log_text = f"{Logger._timestamp()} {text}"
+        if Logger.PRINT_TO_SCREEN:
+            print(log_text)
+        Logger._write_to_file(log_text)
     @staticmethod
     def show_hosts_summary(hosts, highlight_threadhold=80.00):
         """ Hien thi bang tong quan cac host.
