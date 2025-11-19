@@ -4,6 +4,38 @@ from simulation.libs import Logger
 import numpy as np
 import ast
 import re
+from pathlib import Path
+import json
+
+def load_pm_json(folder_path: str, n_files: int = 1):
+    """
+    Đọc n file JSON đầu tiên từ folder_path.
+    Mỗi file chứa 1 PM và danh sách VM.
+    Hỗ trợ root của JSON là dict hoặc list.
+    """
+    folder = Path(folder_path)
+    pm_list = []
+    files = list(folder.glob("*.json"))[:n_files]
+
+    for file in files:
+        with open(file) as f:
+            data = json.load(f)
+
+            # Nếu JSON root là list, lấy PM đầu tiên
+            if isinstance(data, list):
+                if len(data) > 0:
+                    data = data[0]
+                else:
+                    continue  # file rỗng, bỏ qua
+
+            # Bây giờ data chắc chắn là dict
+            if isinstance(data, dict):
+                pm_list.append(data)
+            else:
+                print(f"[WARN] File {file} không phải dict, bỏ qua")
+
+    return pm_list
+
 def load_data(csv_path:str):
     """
         Ham doc du lieu tu file CSV va tra ve pandas Dataframe
@@ -22,6 +54,7 @@ def load_data(csv_path:str):
     except Exception as e:
         Logger.error(f"Loi khi doc file: {e}")
         return None       
+
 
 def safe_list_parse(value):
     """Chuyển chuỗi list thành list an toàn, nếu lỗi thì trả về list rỗng."""

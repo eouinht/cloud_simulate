@@ -66,5 +66,4 @@ class VM:
             
         steal_time = round(steal_time, 7)
         self.vm_cpu_steal = steal_time
-        Logger.info("Here")
         return steal_time

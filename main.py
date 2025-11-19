@@ -1,11 +1,17 @@
 import simpy
 import threading
-from data.utils import load_data
-from simulation.env import simulation_process
+from data.utils import load_pm_json
+from simulation.env import simulation_process_json
 from simulation.libs import Logger
-from simulation import state
+import subprocess
 import uvicorn
 import socket
+from pathlib import Path
+
+PORT = 8000
+JSON_DIR = Path("data/CSV-FileNew/dataset")
+MAX_FILE = 117
+
 
 def check_port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -14,35 +20,37 @@ def check_port_in_use(port):
 if check_port_in_use(8000):
     print("Port 8000 đã được dùng. Hãy dừng process cũ trước.")
     exit(1)
-
-def run_simulation():
-    # csv_path = "/home/thuong/data/merged_output/test_simulate.csv"
-    csv_path = "data/CSV-FileNew/vm_offline_schedueling.csv"
     
-    df = load_data(csv_path)
+def kill_port(port):
+    subprocess.run(f"lsof -t -i:{port} | xargs -r kill -9", shell=True)
     
-    Logger.info("[SIMULATION] START SIMULATION")
+def run_simulation_json(n_files: int = 1):
+    """
+    Chạy simulation JSON trong thread, đọc n_files PM từ JSON_DIR
+    """
+    pm_list = load_pm_json(JSON_DIR, n_files)  # JSON_DIR là Path, n_files là số file
     env = simpy.Environment()
-    # chạy process của bạn
-    env.process(simulation_process(env, df))
+    env.process(simulation_process_json(env, pm_list))
     env.run()
+    Logger.info("[SIM] Simulation finished")
     
-    # print("=== Hosts after simulation ===")
-    # print(state.hosts.keys())
-    
-    # print("\n=== FINAL STATE ===")
-    # for hn, h in state.hosts.items():
-    #     print(f"Host {hn} | CPU={h.host_cpu_usage} | VMs={list(h.uuid_to_vm.keys())}")
-    Logger.info("[SIMULATION] END SIMULATION")
-
-def run_api():
-    uvicorn.run("api_server:app", host="0.0.0.0", port=8000 )
+def start_simulation_thread_json(n_files: int = 1):
+    Logger.info(f"[SIMULATION] START SIMULATION with {n_files} PMs")
+    thread = threading.Thread(target=run_simulation_json, 
+                              args=(n_files,), 
+                              daemon=True)
+    thread.start()
+    Logger.info("[SIMULATION] Simulation thread started")
+    return thread
 
 def main():
-    
-    sim_thread = threading.Thread(target=run_simulation, daemon=True)
-    sim_thread.start()
-    run_api()   # chạy API trong main thread
-    # run_simulation()
+    if check_port_in_use(8000):
+        print("Port 8000 đang dùng. Dừng process cũ trước.")
+        kill_port(8000)
+        
+    start_simulation_thread_json(n_files=117)
+    uvicorn.run("api_server:app", host="0.0.0.0", port=PORT, reload=False)
+
 if __name__ == "__main__":
     main()
+    

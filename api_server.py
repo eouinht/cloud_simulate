@@ -22,6 +22,12 @@ def root():
 #     result = state.simulate_one_step()
 #     return result
 # List all hosts
+@app.get("/timestamp")
+def get_timestamp():
+    if hasattr(state, "timestamp") and "current" in state.timestamp:
+        return {"current": state.timestamp["current"]}
+    return {"current": None}
+
 @app.get("/hosts")
 def list_hosts():
     response = {
@@ -31,7 +37,7 @@ def list_hosts():
     for hn, h in state.hosts.items():
         response["hosts"].append({
             "hostname": hn,
-            # "cpu_usage": h.cpu_usage,
+            "cpu_usage": h.cpu_usage,
             "total_memory": h.total_memory,
             "mem_in_used": h.mem_in_used,
             "num_vms": len(h.uuid_to_vm)

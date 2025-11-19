@@ -18,14 +18,10 @@ class Host:
         self.total_memory = total_memory
         # self.mem_in_used = mem_in_used
         self.qos_risk = -1
-        # --- Logger thông tin khi khởi tạo host ---
-        Logger.info(f"[Host Init] Hostname: {self.hostname}")
-        Logger.info(f"[Host Init] Total CPU: {self.total_cpu}")
-        Logger.info(f"[Host Init] CPU usage: {self.cpu_usage}")
-        Logger.info(f"[Host Init] Total Memory: {self.total_memory}")
-        # Logger.info(f"[Host Init] Memory in use: {self.mem_in_used}")
-        Logger.info(f"[Host Init] QoS Risk: {self.qos_risk}")
-        Logger.info(f"[Host Init] VM count: {len(self.vms)}")
+        Logger.info(f"[Host Init] {self.hostname} | CPU {self.total_cpu} ({self.cpu_usage}) | "
+                    f"Mem {self.total_memory} | QoS {self.qos_risk} | VM {len(self.vms)}"
+                    )
+
         
         
     # --- VM management ---    
@@ -110,21 +106,6 @@ class Host:
         self.update_after_change()
         return vm
 
-    # def k_update_after_change(self, debug=False):
-    #     """_Cập nhật CPU usage ngay sau khi có thay đổi về VM (add, remove, migrate).y_
-
-    #     Args:
-    #         debug (bool, optional): _description_. Defaults to False.
-    #     """
-    #     total = 0.0
-    #     for vm in self.vms:
-    #         if vm.powered_on:
-    #             total += vm.cpu_usage
-    #     self.host_cpu_usage = total
-    #     if debug:
-    #         Logger.info(f"[{self.hostname}] CPU updated after change = {self.host_cpu_usage:.2f}")
-    #     return total
-    
     
     def update_after_change(self, debug = False):
         """
@@ -137,14 +118,19 @@ class Host:
         if debug:
             print(f"[{self.hostname}] Memory used: {self.memory_used:.3f} GB")
 
-        Logger.info(f"[{self.hostname}] Memory used: {self.mem_in_used:.3f} GB")
+        # Logger.info(f"[{self.hostname}] Memory used: {self.mem_in_used:.3f} GB")
         
-        if self.mem_in_used > self.total_memory:
-            Logger.error("Mem in used > real total mem")
-        elif self.mem_in_used  > 0.8*self.total_memory:
-            Logger.warning(" The risk of over mem in used to qos theshold")
+        # if self.mem_in_used > self.total_memory:
+        #     Logger.error("Mem in used > real total mem")
+        # elif self.mem_in_used  > 0.8*self.total_memory:
+        #     Logger.warning(" The risk of over mem in used to qos theshold")
+        total_cpu_used = sum(
+            (getattr(vm, "cpu_usage", 0.0) / 100.0) * getattr(vm, "cpu_allocated", 1.0)
+            for vm in self.uuid_to_vm.values()
+            )
+        self.cpu_usage = (total_cpu_used / self.total_cpu) * 100
         
-        return self.mem_in_used
+        return self.cpu_usage, self.mem_in_used
    
 
     def update_qos_risk(self):
@@ -157,5 +143,5 @@ class Host:
         self.qos_risk = max(0.0, (self.cpu_usage - 80)/self.cpu_usage)
         
         
-        Logger.info(f"[{self.hostname}] Host cpu usage: {self.cpu_usage}")
+        # Logger.info(f"[{self.hostname}] Host cpu usage: {self.cpu_usage}")
         Logger.info(f"[{self.hostname}] Qos risk: {self.qos_risk}")

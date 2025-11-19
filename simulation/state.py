@@ -4,5 +4,6 @@ from .libs import Logger
 # Save global state 
 hosts = {}   # {hostname: Host object}
 vms = {}     # {uuid: VM object}
-timestamp={}
+# timestamp = {}
 
+timestamp = {"current": 0}
