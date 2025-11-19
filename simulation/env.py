@@ -1,111 +1,171 @@
 from simulation.host import Host
-from data.utils import safe_float, safe_list_parse, parse_set_string
-from simulation.observe import inspect_host
 from simulation.libs import Logger
 from simulation import state 
-import time 
+import simpy
+import time
+import requests
+import threading
 
-        
-def simulation_process(env, df):
-    """
-    env: môi trường SimPy
-    df: pandas DataFrame có cấu trúc:
-        pm_id, t_idx, threshold, total_cpu, total_memory,
-        vm_set, vcpus_set, memory_set, cpu_usage_set
-    """
-    for t, df_t in df.groupby("t_idx"):   # thay timestamp -> t_idx
-        
-        Logger.info(f"Time {t}")
-        
-        state.timestamp["current"] = t
-        Logger.info(f"check time hereeeeeeeee {state.timestamp}")
-        
-        for _, row in df_t.iterrows():
-            hostname = row["pm_id"]
-            if hostname not in state.hosts:
-                Logger.info(f"Bắt đầu khởi tạo host: {hostname}")
-                
-                total_cpu = float(row.get("total_cpu", 1))
-                total_memory = float(row.get("total_memory", 1))
-                cpu_usage = float(row.get("cpu_usage", 0))  # nếu dataset không có, mặc định 0
-                # threshold = float(row.get("threshold", 0.7))  # nếu muốn lưu threshold
-                
-                host = Host(env,
-                            hostname,
-                            total_cpu=total_cpu,
-                            cpu_usage=cpu_usage,
-                            total_memory=total_memory)
-                
-                # host.threshold = threshold  # thêm trường threshold nếu Host chưa có
-                state.hosts[hostname] = host
+API = "http://127.0.0.1:8000"
+MAX_STEP = 300
+CPU_OVERLOAD = 80
+CPU_UNDERLOAD = 50
+POLL_INTERVAL = 0.01
 
-            else:
-                host = state.hosts[hostname]
+class SimulationEnv:
+    def __init__(self, pm_list, api_url = API, max_steps = MAX_STEP):
+        self.pm_list = pm_list
+        self.api_url = api_url
+        self.env = simpy.Environment()
+        # self.process = self.env(simulation_process_json(self.env, pm_list))
+        self.max_steps = max_steps
+        self.pause_sim = False
+    
+    def simulation_process(self):
+        for t_idx in range(10):
+            for pm in self.pm_list:
+                pm_id = pm["pm_id"]
+                total_cpu = pm.get("total_cpu", 1)
+                total_memory = pm.get("total_memory", 1)
 
-
-            # --- Parse dữ liệu VM ---
-            
-            uuid_set     = parse_set_string(row["vm_set"])
-            
-            vm_vcpus     = parse_set_string(row["vcpus_set"])
-            vm_memory    = parse_set_string(row["memory_set"])
-            vm_cpu_usage = parse_set_string(row["cpu_usage_set"])
-
-            num_vms = min(len(uuid_set), len(vm_cpu_usage))
-
-            # --- Cập nhật hoặc thêm mới VM ---
-            for i in range(num_vms):
-                
-                uuid = uuid_set[i]
-                cpu_usage = safe_float(vm_cpu_usage[i])
-                cpu_allocated =  safe_float(vm_vcpus[i])
-                memory = safe_float(vm_memory[i])
-                cpu_steal = 0.0  # không có cột này trong dataset mới
-                net_in = 0.0     # không có
-                net_out = 0.0    # không có
-
-                if uuid not in host.uuid_to_vm:
-                    vm_obj  = host.add_vm(uuid, 
-                                          cpu_usage, 
-                                          cpu_steal, 
-                                          cpu_allocated, 
-                                          memory, 
-                                          net_in, 
-                                          net_out)
-                    state.vms[uuid] = vm_obj
+                # Khởi tạo host nếu chưa có
+                if pm_id not in state.hosts:
+                    host = Host(self.env, pm_id, total_cpu=total_cpu, total_memory=total_memory)
+                    state.hosts[pm_id] = host
+                    Logger.info(f"[SIM] Khởi tạo Host {pm_id}")
                 else:
-                    vm_obj = host.uuid_to_vm[uuid]
-                    vm_obj.update(
-                        cpu_usage=cpu_usage,
-                        cpu_steal=cpu_steal,
-                        cpu_allocated=cpu_allocated,
-                        memory = memory,
-                        net_in=net_in,
-                        net_out=net_out
-                    )
-                    state.vms[uuid] = vm_obj 
+                    host = state.hosts[pm_id]
 
-            # --- Cập nhật host CPU usage ---
-            # host.update_after_change()
-            host.update_qos_risk()
-            Logger.info(f"[CHECK] pm={hostname}, vm_set_raw={row['vm_set'][:200]}")
-            Logger.info(f"[CHECK] pm={hostname}, uuid_count={len(uuid_set)}")
+                for vm in pm["vms"]:
+                    uuid = vm["vm_id"]
+                    cpu_allocated = vm.get("vcpus", 1)
+                    memory = vm.get("memory", 1)
+                    cpu_usage_list = vm.get("cpu_usage", [])
 
-        Logger.info(f"SimPy time = {env.now}, t_idx = {t}")
-        state.timestamp["current"] = env.now
-        # inspect_host()
-        # Kiểm tra state có đủ host và VM chưa
-        Logger.info(f"[DEBUG] Tổng số host hiện tại: {len(state.hosts)}")
-        
-        # for hname, host in state.hosts.items():
-        #     Logger.info(f"  Host: {hname} | Số VM: {len(host.uuid_to_vm)}")
+                    # Lấy giá trị CPU usage theo t_idx nếu có
+                    if t_idx < len(cpu_usage_list):
+                        cpu_usage = cpu_usage_list[t_idx]
+                    else:
+                        cpu_usage = 0.0  # hoặc giữ giá trị cũ
+
+                    if uuid not in host.uuid_to_vm:
+                        vm_obj = host.add_vm(uuid, cpu_usage=cpu_usage, cpu_steal=0.0,
+                                            cpu_allocated=cpu_allocated, memory=memory,
+                                            net_in=0.0, net_out=0.0)
+                        state.vms[uuid] = vm_obj
+                    else:
+                        vm_obj = host.uuid_to_vm[uuid]
+                        vm_obj.update(cpu_usage=cpu_usage, cpu_steal=0.0,
+                                    cpu_allocated=cpu_allocated, memory=memory,
+                                    net_in=0.0, net_out=0.0)
+                        state.vms[uuid] = vm_obj
+
+                host.update_qos_risk()
+                host.update_after_change()
+                
+            # Update step
+            state.timestamp["current"] = t_idx
+            Logger.info(f"[SIM] Step {t_idx} | Hosts: {len(state.hosts)}, VMs: {len(state.vms)}")
+            # Notify scheduler
+            state.step_ready_event.set()
+            waited = 0
+            while waited < 5.0:  # max wait 5s
+                if state.step_continue_event.is_set():
+                    break
+                self.env.timeout(0.01)
+                waited += 0.01
+            state.step_continue_event.wait() 
+            # Clear events for next step
+            state.step_continue_event.clear()
+            state.step_ready_event.clear()
+
+            yield self.env.timeout(1)
+
+    def simple_scheduler(self, cpu_overload =  CPU_OVERLOAD, cpu_underload = CPU_UNDERLOAD):
+        last_step = -1 
+        Logger.info("============== Starting Simple Scheduler ===============")
+        while not self.pause_sim:
+            step = state.timestamp.get("current", -1)
+            if step <= last_step:
+            # chưa có step mới
+                time.sleep(POLL_INTERVAL)
+                continue
             
-        Logger.info(f"[DEBUG] Tổng số VM hiện tại: {len(state.vms)}")
+            last_step = step
+            Logger.info(f"[Scheduler] Handling step {step}")
 
-        yield env.timeout(1)  # mỗi t_idx = 1 step
+            try:
+                hosts_data = requests.get(f"{API}/hosts").json()["hosts"]
+            except Exception as e:
+                Logger.error(f"Failed to get hosts info: {e}")
+                continue
+
+            overloaded, underloaded = [], []
+
+            # Xử lý host dựa trên CPU usage từ API
+            for h in hosts_data:
+                hostname = h["hostname"]
+                cpu = h.get("cpu_usage", 0.0)  # lấy CPU từ API
+                num_vms = h.get("num_vms", 0)
+
+                Logger.info(f"[DEBUG] Host {hostname} current CPU usage: {cpu:.2f}% | VMs: {num_vms}")
+
+                if cpu > CPU_OVERLOAD and num_vms > 0:
+                    overloaded.append((hostname, cpu))
+                elif cpu < CPU_UNDERLOAD:
+                    underloaded.append((hostname, cpu))
+
+            if overloaded and underloaded:
+                target_host = min(underloaded, key=lambda x: x[1])[0]
+                for src_host, _ in overloaded:
+                    detail = requests.get(f"{self.api_url}/hosts/{src_host}").json()
+                    if not detail or not detail.get("vms"):
+                        continue
+                    vm_to_migrate = max(detail["vms"], key=lambda v: v["cpu_usage"])
+                    self.migrate_vm(vm_to_migrate["uuid"], target_host)
+                    
+            # Notify simulation to continue
+            state.step_continue_event.set()
+            
+     # -------------------- VM Migration --------------------
+    def migrate_vm(self, vm_uuid, target_host):
+        try:
+            payload = {"uuid": vm_uuid, "des_host": str(target_host)}
+            r = requests.post(f"{self.api_url}/migrate", json=payload)
+            if r.status_code == 200:
+                Logger.succeed(f"Migrated VM {vm_uuid} -> Host {target_host}")
+            else:
+                Logger.warning(f"Migration failed: {r.json()}")
+        except Exception as e:
+            Logger.error(f"Error calling migrate API: {e}")
+
+    # -------------------- Run simulation --------------------
+    def run(self):
+        # Start scheduler in thread
+        sched_thread = threading.Thread(target=self.simple_scheduler, daemon=True)
+        sched_thread.start()
+
+        # Run SimPy environment
+        self.env.process(self.simulation_process())
+        self.env.run()
+        Logger.info("[SIM] Simulation finished")
+        self.pause_sim = True
+               
+# def simulation_loop(env):
+#     while True:
+#         state.timestamp["current"] += 1
+#         print("HERE")
         
-
-        # Logger.info("Here")
+#         # yield trả quyền điều khiển cho SimPy
+#         yield env.timeout(1)
+        
+#         # sau khi timeout, code này sẽ chạy
+#         print("AFTER TIMEOUT - This WILL run")
+#         state.step_ready_event.set()
+#         state.step_continue_event.wait()
+#         state.step_continue_event.clear()
+#         state.step_ready_event.clear()
+#         print("This WILL also run")
 
 
 def simulation_process_json(env, pm_list):
@@ -117,7 +177,7 @@ def simulation_process_json(env, pm_list):
     """
     max_steps = max(len(vm["cpu_usage"]) for pm in pm_list for vm in pm["vms"])
     
-    for t_idx in range(max_steps):
+    for t_idx in range(3):
         for pm in pm_list:
             pm_id = pm["pm_id"]
             total_cpu = pm.get("total_cpu", 1)
@@ -156,7 +216,14 @@ def simulation_process_json(env, pm_list):
                     state.vms[uuid] = vm_obj
 
             host.update_qos_risk()
+            
+        Logger.info(f"Done time step {t_idx}")
 
         state.timestamp["current"] = t_idx
         Logger.info(f"[SIM] SimPy time = {env.now}, t_idx = {t_idx}, hosts={len(state.hosts)}, vms={len(state.vms)}")
+        # wait for POST request
+        
+        # ------- notify scheduler a new step is ready -------
+        state.step_ready_event.set()               
         yield env.timeout(1)  # mỗi step SimPy
+        state.step_ready_event.clear()

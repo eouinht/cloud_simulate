@@ -22,6 +22,7 @@ def root():
 #     result = state.simulate_one_step()
 #     return result
 # List all hosts
+
 @app.get("/timestamp")
 def get_timestamp():
     if hasattr(state, "timestamp") and "current" in state.timestamp:
@@ -39,7 +40,7 @@ def list_hosts():
             "hostname": hn,
             "cpu_usage": h.cpu_usage,
             "total_memory": h.total_memory,
-            "mem_in_used": h.mem_in_used,
+            # "mem_in_used": h.mem_in_used,
             "num_vms": len(h.uuid_to_vm)
         })
     return response

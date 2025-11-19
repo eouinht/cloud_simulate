@@ -144,4 +144,4 @@ class Host:
         
         
         # Logger.info(f"[{self.hostname}] Host cpu usage: {self.cpu_usage}")
-        Logger.info(f"[{self.hostname}] Qos risk: {self.qos_risk}")
+        # Logger.info(f"[{self.hostname}] Qos risk: {self.qos_risk}")

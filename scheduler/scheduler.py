@@ -5,14 +5,30 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import requests
 from simulation.libs import Logger
 import requests
-
+from simulation import state
 
 API = "http://127.0.0.1:8000"
 
 CPU_OVERLOAD = 80
 CPU_UNDERLOAD = 50
 MAX_STEP = 300
+POLL_INTERVAL = 0.01  # 10ms
 
+def wait_for_new_step(last_step):
+    while True:
+        cur = state.timestamp.get("current", 0)
+        if cur > last_step:
+            return cur
+        time.sleep(1)
+
+def wait_for_step_ready(last_step, timeout = None):
+    got = state.step_ready_event.wait(timeout=timeout)
+    Logger.info("-------------------------Stuck here-------------------------")
+    if not got:
+        return None
+    return state.timestamp.get("current", None)
+
+    
 def get_current_step(timeout=5):
     start = time.time()
     while True:
@@ -49,15 +65,25 @@ def migrate_vm(vm_uuid, target_host):
         Logger.error(f"Error calling migrate API: {e}")
 
 def simple_scheduler(max_steps=MAX_STEP):
-    last_step = 0
+    last_step = -1
     Logger.info("============== Starting Simple Scheduler ===============")
     
     for _ in range(max_steps):
-        step = get_current_step()
+        
+        # chờ timestamp tăng (từ mô phỏng)
+        step = wait_for_step_ready(last_step, timeout=10.0)
+        
+        
+        step = state.timestamp.get("current", -1)
         if step <= last_step:
-            step = last_step
+            # chưa có step mới
+            time.sleep(POLL_INTERVAL)
+            continue
+        
+        Logger.info(f"[Scheduler] Handling step {step}")
         last_step = step
-        Logger.info(f"Scheduler Step {step}:")
+        
+        Logger.info(f"Scheduler handling step {step}")
         
         try:
             hosts_data = requests.get(f"{API}/hosts").json()["hosts"]
@@ -80,23 +106,44 @@ def simple_scheduler(max_steps=MAX_STEP):
             elif cpu < CPU_UNDERLOAD:
                 underloaded.append((hostname, cpu))
 
-        if not overloaded or not underloaded:
-            Logger.info("No migration needed this step.")
-        else:
-            # chọn host ít tải nhất làm target
-            target_host = min(underloaded, key=lambda x: x[1])[0]
-            for src_host, _ in overloaded:
-                # lấy chi tiết host từ API
-                detail = get_host_detail(src_host)
-                if not detail or not detail.get("vms"):
-                    continue
-                
-                # chọn VM CPU cao nhất (dựa trên CPU usage từ API)
-                vm_to_migrate = max(detail["vms"], key=lambda v: v["cpu_usage"])
-                migrate_vm(vm_to_migrate["uuid"], target_host)
+        try:
+            if overloaded and underloaded:
+                target_host = min(underloaded, key=lambda x: x[1])[0]
+                for src_host, _ in overloaded:
+                    detail = get_host_detail(src_host)
+                    if not detail:
+                        continue
+                    vms = detail.get("vms", [])
+                    if not vms:
+                        continue
 
-        Logger.info(f"Step {step} done.\n")
+                    # choose VM by available keys and cpu_usage field (API should return VM cpu as float)
+                    def vm_cpu_val(v):
+                        val = v.get("cpu_usage")
+                        # if cpu_usage is list (unlikely via API), guard access
+                        if isinstance(val, list):
+                            idx = state.timestamp.get("current", 0)
+                            return val[idx] if idx < len(val) else 0.0
+                        return val if isinstance(val, (int, float)) else 0.0
 
+                    vm_to_migrate = max(vms, key=vm_cpu_val)
+                    vm_uuid = vm_to_migrate.get("uuid") or vm_to_migrate.get("vm_id")
+                    if vm_uuid:
+                        migrate_vm(vm_uuid, target_host)
+                    else:
+                        Logger.warning(f"No uuid found for candidate VM on host {src_host}")
+            else:
+                Logger.info("No migration needed this step.")
+        except Exception as e:
+            Logger.error(f"Error during scheduling logic: {e}")
+        finally:
+            # ALWAYS let simulation continue (avoid deadlock)
+            state.step_continue_event.set()
+            last_step = step
+            Logger.info(f"Step {step} done.\n")
+
+
+        
     Logger.info("Scheduler finished all steps.")
 
 if __name__ == "__main__":
