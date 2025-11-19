@@ -2,5 +2,12 @@ data/CSV-FileNew
 data/HUAWEICloudPublicDataset
 data/test_simulate.csv
 data/__pycache__
-logs/simulation.log
-scheduler/logs
+
+# Logs
+logs/
+scheduler/logs/
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
