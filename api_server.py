@@ -77,6 +77,29 @@ def get_host(hostname: str):
         "num_vms": len(host.uuid_to_vm),     
         "vms": vm_list,  
     }
+@app.get("/vm/{vm_uuid}")
+def get_vm(vm_uuid: str):
+    if vm_uuid not in state.vms:
+        raise HTTPException(status_code=404, detail=f"VM {vm_uuid} not found in system.")
+    
+    vm = state.vms[vm_uuid]
+    cur_host = vm.hostname
+    
+    if cur_host is None:
+        Logger.warning(f"VM {vm_uuid} is not assigned to any host.")
+    else:
+        Logger.info(f"VM {vm_uuid} placed in Host {cur_host}")
+
+    # Trả về thông tin VM
+    return {
+        "uuid": vm.uuid,
+        "host": cur_host,
+        "cpu_usage": vm.cpu_usage,
+        "cpu_allocated": vm.cpu_allocated,
+        "vm_cpu_steal": vm.vm_cpu_steal,
+        "network_in": vm.net_in,
+        "network_out": vm.net_out,
+    }
     
 class CreateVMRequest(BaseModel):
     uuid: str | None = None
@@ -161,6 +184,7 @@ def migrate_vm_api(req: MigrateVMRequest):
     # Get current host
     cur_hostname = vm.hostname
     
+   
     if cur_hostname is None:
         raise HTTPException(status_code=500, detail=f"VM {uuid} is not assign to any host.")
 
@@ -169,22 +193,13 @@ def migrate_vm_api(req: MigrateVMRequest):
 
     cur_host = state.hosts[cur_hostname]
     tar_host = state.hosts[target_host]
-
+    
     # Get VM object
     if uuid not in cur_host.uuid_to_vm:
         raise HTTPException(status_code=500, detail=f"VM {uuid} missing from host {cur_hostname} state.")
-    vm = cur_host.uuid_to_vm.pop(uuid)
-    if vm in cur_host.vms:
-        cur_host.vms.remove(vm)
 
-    # Assign VM to new host
-    tar_host.vms.append(vm)
-    tar_host.uuid_to_vm[vm.uuid] = vm
-    vm.migrated_vm(tar_host)
-
-    # Update both hosts
-    cur_host.update_after_change()
-    tar_host.update_after_change()
+    mig_vm = cur_host.remove_vm(uuid)
+    mig_vm.migrated_vm(cur_hostname,tar_host)
 
     # Log and return result
     Logger.succeed(f"VM {uuid} migrated from {cur_hostname} → {target_host}")

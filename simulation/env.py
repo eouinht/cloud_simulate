@@ -22,7 +22,7 @@ class SimulationEnv:
         self.pause_sim = False
     
     def simulation_process(self):
-        for t_idx in range(10):
+        for t_idx in range(MAX_STEP):
             for pm in self.pm_list:
                 pm_id = pm["pm_id"]
                 total_cpu = pm.get("total_cpu", 1)
@@ -127,17 +127,34 @@ class SimulationEnv:
             # Notify simulation to continue
             state.step_continue_event.set()
             
-     # -------------------- VM Migration --------------------
     def migrate_vm(self, vm_uuid, target_host):
         try:
+            # Lấy thông tin VM hiện tại từ API trước khi migrate
+            vm_info_resp = requests.get(f"{self.api_url}/vm/{vm_uuid}")
+            if vm_info_resp.status_code != 200:
+                Logger.warning(f"Cannot fetch VM {vm_uuid} info: {vm_info_resp.text}")
+                return
+
+            vm_info = vm_info_resp.json()
+            current_host = vm_info.get("host")
+
+            # Nếu VM đã ở host đích thì không migrate
+            if current_host == target_host:
+                Logger.info(f"VM {vm_uuid} already on target host {target_host}, skipping migration")
+                return
+
+            # Gọi API migrate
             payload = {"uuid": vm_uuid, "des_host": str(target_host)}
             r = requests.post(f"{self.api_url}/migrate", json=payload)
+
             if r.status_code == 200:
                 Logger.succeed(f"Migrated VM {vm_uuid} -> Host {target_host}")
+            elif r.status_code == 400:
+                Logger.info(f"VM {vm_uuid} migration skipped: {r.json().get('detail')}")
             else:
                 Logger.warning(f"Migration failed: {r.json()}")
         except Exception as e:
-            Logger.error(f"Error calling migrate API: {e}")
+            Logger.error(f"Error calling migrate API for VM {vm_uuid}: {e}")
 
     # -------------------- Run simulation --------------------
     def run(self):
@@ -151,79 +168,3 @@ class SimulationEnv:
         Logger.info("[SIM] Simulation finished")
         self.pause_sim = True
                
-# def simulation_loop(env):
-#     while True:
-#         state.timestamp["current"] += 1
-#         print("HERE")
-        
-#         # yield trả quyền điều khiển cho SimPy
-#         yield env.timeout(1)
-        
-#         # sau khi timeout, code này sẽ chạy
-#         print("AFTER TIMEOUT - This WILL run")
-#         state.step_ready_event.set()
-#         state.step_continue_event.wait()
-#         state.step_continue_event.clear()
-#         state.step_ready_event.clear()
-#         print("This WILL also run")
-
-
-def simulation_process_json(env, pm_list):
-    """
-    env: SimPy environment
-    json_data: list of PMs
-    pm_list: list of PM dicts, mỗi dict có keys: pm_id, total_cpu, total_memory, threshold, vms
-
-    """
-    max_steps = max(len(vm["cpu_usage"]) for pm in pm_list for vm in pm["vms"])
-    
-    for t_idx in range(3):
-        for pm in pm_list:
-            pm_id = pm["pm_id"]
-            total_cpu = pm.get("total_cpu", 1)
-            total_memory = pm.get("total_memory", 1)
-
-            # Khởi tạo host nếu chưa có
-            if pm_id not in state.hosts:
-                host = Host(env, pm_id, total_cpu=total_cpu, total_memory=total_memory)
-                state.hosts[pm_id] = host
-                Logger.info(f"[SIM] Khởi tạo Host {pm_id}")
-            else:
-                host = state.hosts[pm_id]
-
-            for vm in pm["vms"]:
-                uuid = vm["vm_id"]
-                cpu_allocated = vm.get("vcpus", 1)
-                memory = vm.get("memory", 1)
-                cpu_usage_list = vm.get("cpu_usage", [])
-
-                # Lấy giá trị CPU usage theo t_idx nếu có
-                if t_idx < len(cpu_usage_list):
-                    cpu_usage = cpu_usage_list[t_idx]
-                else:
-                    cpu_usage = 0.0  # hoặc giữ giá trị cũ
-
-                if uuid not in host.uuid_to_vm:
-                    vm_obj = host.add_vm(uuid, cpu_usage=cpu_usage, cpu_steal=0.0,
-                                         cpu_allocated=cpu_allocated, memory=memory,
-                                         net_in=0.0, net_out=0.0)
-                    state.vms[uuid] = vm_obj
-                else:
-                    vm_obj = host.uuid_to_vm[uuid]
-                    vm_obj.update(cpu_usage=cpu_usage, cpu_steal=0.0,
-                                  cpu_allocated=cpu_allocated, memory=memory,
-                                  net_in=0.0, net_out=0.0)
-                    state.vms[uuid] = vm_obj
-
-            host.update_qos_risk()
-            
-        Logger.info(f"Done time step {t_idx}")
-
-        state.timestamp["current"] = t_idx
-        Logger.info(f"[SIM] SimPy time = {env.now}, t_idx = {t_idx}, hosts={len(state.hosts)}, vms={len(state.vms)}")
-        # wait for POST request
-        
-        # ------- notify scheduler a new step is ready -------
-        state.step_ready_event.set()               
-        yield env.timeout(1)  # mỗi step SimPy
-        state.step_ready_event.clear()

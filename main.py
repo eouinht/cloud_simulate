@@ -12,7 +12,7 @@ import time
 PORT = 8000
 JSON_DIR = Path("data/CSV-FileNew/dataset")
 MAX_FILE = 117
-N_FILE = 50
+N_FILE = 117
 API = "http://127.0.0.1:8000"
 
 pm_list = load_pm_json(JSON_DIR, N_FILE)

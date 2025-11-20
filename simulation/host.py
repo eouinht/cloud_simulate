@@ -1,5 +1,7 @@
 from simulation.vm import VM
 from simulation.libs import Logger
+from simulation import state
+
 class Host:
     def __init__(self, 
                  env, 
@@ -100,12 +102,22 @@ class Host:
         except ValueError:
             Logger.warning(f"[DEBUG] VM {uuid[:8]} not found in vms list of {self.hostname}. Dict and list are out of sync!")
 
-        Logger.info(f"[DEBUG] Removed VM {uuid[:8]} from {self.hostname}")
-        Logger.info(f"[DEBUG] Remaining VMs on {self.hostname}: {len(self.vms)} (dict keys: {list(self.uuid_to_vm.keys())})")
+        Logger.info(f"[DEBUG] Removed VM {uuid[:8]} from host {self.hostname}")
+        # Logger.info(f"[DEBUG] Remaining VMs on {self.hostname}: {len(self.vms)} (dict keys: {list(self.uuid_to_vm.keys())})")
 
+        # update thong so khong quan trong 
         self.update_after_change()
+        self.update_qos_risk()
+        
         return vm
 
+    # def migrated_vm(self, uuid, tar_host):
+        
+    #     vm = state.vms[uuid]
+    #     cur_host = state.hosts[vm.hostname]
+        
+    #     mig_vm = cur_host.remove_vm(uuid)
+    #     mig_vm.mig    
     
     def update_after_change(self, debug = False):
         """

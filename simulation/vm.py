@@ -38,9 +38,9 @@ class VM:
         self.hostname = host.hostname
         self.placemented = True
         
-    def migrated_vm(self, tar_host):
-        self.pre_hostname = self.hostname
-        self.hostname = tar_host.hostname
+    def migrated_vm(self, src_hostname, tar_host):
+        self.pre_hostname = src_hostname       # truyen vao string
+        self.hostname = tar_host.hostname  #truyen vao host
         self.placemented = True
         self.migrated = True
         if self.env is not None:
