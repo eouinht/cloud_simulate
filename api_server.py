@@ -89,11 +89,19 @@ def get_vm(vm_uuid: str):
         Logger.warning(f"VM {vm_uuid} is not assigned to any host.")
     else:
         Logger.info(f"VM {vm_uuid} placed in Host {cur_host}")
+    if cur_host == vm.pre_hostname:
+        print("STUCKKKKKKKKKKKKKKKKHREREEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
 
+    
+    
+    step = state.timestamp.get("current", -1)
+    print(f"[DEBUG] Step before migrate {step}")
+    print(f"hostname of {vm_uuid} is {vm.hostname}")
     # Trả về thông tin VM
     return {
         "uuid": vm.uuid,
-        "host": cur_host,
+        "old_host": vm.pre_hostname,  
+        "host": vm.hostname,
         "cpu_usage": vm.cpu_usage,
         "cpu_allocated": vm.cpu_allocated,
         "vm_cpu_steal": vm.vm_cpu_steal,
@@ -198,25 +206,50 @@ def migrate_vm_api(req: MigrateVMRequest):
     if uuid not in cur_host.uuid_to_vm:
         raise HTTPException(status_code=500, detail=f"VM {uuid} missing from host {cur_hostname} state.")
 
-    mig_vm = cur_host.remove_vm(uuid)
-    mig_vm.migrated_vm(cur_hostname,tar_host)
+    
+    vm_obj = cur_host.remove_vm(uuid)
+    
+    # Add lại VM sang host mới bằng đúng 7 field
+    tar_host.add_vm(
+        vm_obj.uuid,
+        vm_obj.cpu_usage,
+        vm_obj.vm_cpu_steal,
+        vm_obj.cpu_allocated,
+        vm_obj.memory,
+        vm_obj.net_in,
+        vm_obj.net_out
+    )
+    print("Before:", vm_obj.hostname)
+    
+    
 
+    vm_obj.update_vm_after_migrated(cur_hostname, target_host)
+    print("After:", vm_obj.hostname)    
+    print(f"[DEBUG] Adding vm {uuid} from {cur_hostname} to new host {target_host}")
+    # Get VM object
+    if uuid not in tar_host.uuid_to_vm:
+        print(f"[DEBUG] Not found VM {uuid} in des host {target_host}")
+
+    # mig_vm.update_vm_after_migrated(cur_hostname,target_host)
+    
     # Log and return result
-    Logger.succeed(f"VM {uuid} migrated from {cur_hostname} → {target_host}")
+    Logger.succeed(f"VM {uuid} migrated from host {cur_hostname} → host {target_host}")
+    
+    print("SERVER AFTER UPDATE:", vm_obj.uuid, "->", vm.hostname)
 
     return {
-        "message": f"VM {uuid} migrated from {cur_hostname} → {target_host}",
+        "message": f"VM {uuid} migrated from host {cur_hostname} → host {target_host}",
         "from": cur_hostname,
         "to": target_host,
         "timestamp": state.timestamp,
         "vm": {
             "uuid": uuid,
-            "host": target_host,
-            "cpu_usage": vm.cpu_usage,
-            "vm_cpu_steal": vm.vm_cpu_steal,
-            "cpu_allocated": vm.cpu_allocated,
-            "network_in": vm.net_in,
-            "network_out": vm.net_out
+            "host": vm_obj.hostname,
+            "cpu_usage": vm_obj.cpu_usage,
+            "vm_cpu_steal": vm_obj.vm_cpu_steal,
+            "cpu_allocated": vm_obj.cpu_allocated,
+            "network_in": vm_obj.net_in,
+            "network_out": vm_obj.net_out
         }
     }
 @app.get("/vm/{uuid}/steal_time")

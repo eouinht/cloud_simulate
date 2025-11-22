@@ -11,7 +11,8 @@ class VM:
                  memory = 0.0,
                  net_in = 0.0, 
                  net_out = 0.0,
-                 hostname = None):
+                 hostname = None,
+                 cpu_usage_list = None):
         
         self.env = env
         self.uuid = uuid or str(uuid_lib.uuid4())
@@ -26,6 +27,7 @@ class VM:
         self.net_in = net_in
         self.net_out = net_out
         self.memory = memory
+        self.cpu_usage_list = cpu_usage_list or []
         # default = False (no migration yet)
         self.migrated = False
         self.pre_hostname = None
@@ -38,16 +40,19 @@ class VM:
         self.hostname = host.hostname
         self.placemented = True
         
-    def migrated_vm(self, src_hostname, tar_host):
-        self.pre_hostname = src_hostname       # truyen vao string
-        self.hostname = tar_host.hostname  #truyen vao host
+    def update_vm_after_migrated(self, src_hostname, des_hostname):
+        self.pre_hostname = src_hostname      # truyen vao string
+        self.hostname = des_hostname          # truyen vao string
         self.placemented = True
         self.migrated = True
         if self.env is not None:
             self.migrated_time = self.env.now
         
+    
     def update(self, cpu_usage=None, cpu_steal=None, 
-               cpu_allocated=None,memory = None, net_in=None, net_out=None):
+               cpu_allocated=None,memory = None, 
+               net_in=None, net_out=None,
+               cpu_usage_list = None):
         """Update VM metrics (only provided values are updated)."""
         if cpu_usage is not None: self.cpu_usage = cpu_usage
         if cpu_steal is not None: self.cpu_steal = cpu_steal
@@ -55,6 +60,7 @@ class VM:
         if memory is not None: self.memory = memory
         if net_in is not None: self.net_in = net_in
         if net_out is not None: self.net_out = net_out
+        if cpu_usage_list is not None: self.cpu_usage_list = cpu_usage_list
         return self
       
     def compute_steal_time(self):

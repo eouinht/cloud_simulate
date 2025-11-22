@@ -1,10 +1,10 @@
 import threading
 # simulation/state.py
 # Save global state 
-hosts = {}   # {hostname: Host object}
-vms = {}     # {uuid: VM object}
-# timestamp = {}
-
+hosts = {}      # {hostname: Host object}
+vms = {}        # {uuid: VM object}
+                # timestamp = {}
+list_vms = []   # Danh sách uuid của tất cả VM
 timestamp = {"current": 0}
 
 step_event = threading.Event()
